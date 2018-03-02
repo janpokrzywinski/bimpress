@@ -1,0 +1,6 @@
+screen quarterup
+header small c "header_small"
+screen half
+header m c "header"
+screen quarterdown
+header big c "header_big"

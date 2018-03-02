@@ -1,0 +1,13 @@
+screen thirdup
+header big c "story time"
+screen tdown
+text centre "When I was growing up I alwasy wanted to become a sheep herder."
+echo
+echo
+text centre "Then when I became an adult I realised that I much prefer ${col_yellow}goats."
+echo
+echo
+text centre "And that's how I came about to work in IT"
+echo
+echo
+text centre "Rest is history."

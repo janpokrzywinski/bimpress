@@ -1,0 +1,12 @@
+screen fifthup
+header big c "bullet points?"
+screen half
+text ql "some advantages of bullet points:"
+screen thirddown
+text tl "- they look nice"
+echo
+text lt "- they look clean"
+echo
+text tl "- they look organised"
+echo
+text tl "- your boss likes them"

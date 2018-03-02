@@ -1,0 +1,16 @@
+screen top
+text left "top left"
+screen fifthup
+text fleft "fifth"
+screen quarterup
+text quarterleft quarter
+screen thirdup
+text tleft third
+screen half
+text centre centre
+screen thirddown
+text thirdright third
+screen quarterdown
+text quarterright quarter
+screen fifthdown
+text fifthright fifth

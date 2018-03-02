@@ -1,0 +1,3 @@
+- Prepare documentation
+- Make demo that shows all features
+- Add support for custom fonts

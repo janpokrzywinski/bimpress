@@ -1,0 +1,5 @@
+header small c "hello there"
+screen thirdup
+header s c "hello!"
+screen half
+header small c "hello"

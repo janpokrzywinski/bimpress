@@ -1,0 +1,395 @@
+#!/bin/bash
+# filename: bimpress
+# Jan Pokrzywinski 2016-2018
+# Bash Impress - presentation framework
+
+###############################################################################
+# Define variables for colours
+
+col_grey="\e[1;30m"
+col_red="\e[1;31m"
+col_green="\e[1;32m"
+col_yellow="\e[1;33m"
+col_blue="\e[1;34m"
+col_pink="\e[1;35m"
+col_mag="\e[1;36m"
+col_white="\e[1;37m"
+col_none="\e[0m"
+
+
+###############################################################################
+# Output control functions, notes to use on other screen from tmp file.
+# Footer status bar showing current page / page count + author (if present)
+
+function status_bar()
+{
+    pos_y=$(tput lines)
+    tput cup ${pos_y} 0
+    printf "${col_grey}Page: ${page} / ${slide_last}"
+    if [ -n "${author}" ]
+    then
+        text right "${col_grey}Presentation by ${author}"
+    fi
+    printf "${col_none}"
+}
+
+function notes(){
+    echo ${1} >> ${notes_file}
+}
+
+function graceful_exit(){
+    clear
+    trap - INT
+    tput cnorm
+    if [ -f ${notes_file} ]
+    then
+        rm ${notes_file}
+    fi
+    exit 0
+}
+
+function print_help()
+{
+    echo "usage: $0 presentation_directory"
+    echo "While in presentation use keys for navigation:"
+    echo ""
+    echo "> . n ]   - next slide"
+    echo "< , b [   - previous slide "
+    echo "r         - reload current slide"
+    echo "0 to 9    - jump to slide number"
+    echo "q x e     - quit"
+    echo ""
+}
+
+
+###############################################################################
+# Text display function.
+# This used for X positioning and printing out text
+# ${rc} variables are used to remove any colour formatting from the text.
+# It is used for the right alignment, to make sure that text containing colour
+# is not placed incorrectly due to the added length by the nonprintable chars.
+
+function text()
+{
+    position=${1}
+    message=${2}
+    rc=$(printf "%b" "${message}" | sed $'s,\x1b\\[[0-9;]*[a-zA-Z],,g')
+    length=$(printf "%s" "${rc}" | awk '{print length}')
+    case "${position}" in
+        'c'|'centre'|'center')
+            pos_x=$(expr $(tput cols) / 2 - ${length} / 2 )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'm'|'middle'|'h'|'half')
+            pos_x=$(expr $(tput cols) / 2 )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'r'|'right')
+            pos_x=$(expr $(tput cols) - $(echo "${rc}" | wc -c) )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'lt'|'lthird'|'leftt'|'leftthird'|'tl'|'tleft'|'thirdl'|'thirdleft')
+            pos_x=$(expr $(tput cols) / 3 )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'lq'|'lquarter'|'leftq'|'leftquarter'|'ql'|'qleft'|'quarterl'|'quarterleft')
+            pos_x=$(expr $(tput cols) / 4 )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'lf'|'lfifth'|'leftf'|'leftfifth'|'fl'|'fleft'|'fifthl'|'fifthleft')
+            pos_x=$(expr $(tput cols) / 5 )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'rt'|'rthird'|'rightt'|'rightthird'|'tr'|'tright'|'thirdr'|'thirdright')
+            pos_x=$(expr $(tput cols) - $(tput cols) / 3 - ${length} )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'rq'|'rquarter'|'rightq'|'rightquarter'|'qr'|'qright'|'quarterr'|'quarterright')
+            pos_x=$(expr $(tput cols) - $(tput cols) / 4 - ${length} )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'rf'|'rfifth'|'rightf'|'rightfifth'|'fr'|'fright'|'fifthr'|'fifthright')
+            pos_x=$(expr $(tput cols) - $(tput cols) / 5 - ${length} )
+            tput cub $(tput cols)
+            tput cuf ${pos_x}
+            ;;
+        'l'|'left'|*)
+            tput cub $(tput cols)
+            ;;
+    esac
+    printf "${col_none}%b${col_none}" "${message}"
+}
+
+
+###############################################################################
+# Funtion to centre out conetnts of a file
+# This still needs some work, awk doesn't print length if the line is empty
+# causing expr evaluation error
+function cencat()
+{
+    input_file=${1}
+    original_IFS=${IFS}
+    IFS=''
+
+    while read line
+    do
+        line_length=$(printf "%s" "${line}" | awk '{print length}')
+        text_central_pos=$( expr $(tput cols) / 2 + ${line_length} / 2 )
+        printf "%${text_central_pos}b\n" "${line}"
+    done < ${presentation_directory}/${input_file}
+
+    IFS=${original_IFS}
+}
+
+
+###############################################################################
+# Header printing function.
+# Takes size first, then alignment, finally text.
+
+function header()
+{
+    font_size=${1}
+    alignment=${2}
+    message=${3}
+    case "${font_size}" in
+        's'|'small'|'l'|'little')
+            font=${font_small}
+            ;;
+        'b'|'big'|'l'|'large')
+            font=${font_big}
+            ;;
+        'm'|'medium'|'standard'|*)
+            font=${font_standard}
+            ;;
+    esac
+    case "${alignment}" in
+        'l'|'left')
+            align='-l'
+            ;;
+        'r'|'right')
+            align='-r'
+            ;;
+        'c'|'centre'|'center'|*)
+            align='-c'
+            ;;
+    esac
+    figlet -f ${font} ${align} -w $(tput cols) "${message}" | ${colouriser}
+}
+
+
+###############################################################################
+# Cursor placement functions.
+# These are used for the Y location in terminal.
+# screen takes either name of location or relative up/down with amount of shift
+# screen_xy requires numbers for absolute screen position
+
+function screen()
+{
+    position=${1}
+    step_amount=${2}
+    case "${position}" in
+        't'|'top')
+            tput cup 0
+            ;;
+        'u'|'up')
+            tput cuu ${step_amount}
+            ;;
+        'd'|'down')
+            tput cud ${step_amount}
+            ;;
+        'h'|'half')
+            tput cup $(expr $(tput lines) / 2)
+            ;;
+        'tu'|'tup'|'thirdu'|'thirdup')
+            tput cup $(expr $(tput lines) / 3)
+            ;;
+        'qu'|'qup'|'quarteru'|'quarterup')
+            tput cup $(expr $(tput lines) / 4)
+            ;;
+        'fu'|'fup'|'fifthu'|'fifthup')
+            tput cup $(expr $(tput lines) / 5)
+            ;;
+        'td'|'tdown'|'thirdd'|'thirddown')
+            tput cup $(expr $(tput lines) - $(tput lines) / 3)
+            ;;
+        'qd'|'qdown'|'quarterd'|'quarterdown')
+            tput cup $(expr $(tput lines) - $(tput lines) / 4)
+            ;;
+        'fd'|'fdown'|'fifthd'|'fifthdown')
+            tput cup $(expr $(tput lines) - $(tput lines) / 5)
+            ;;
+        *)
+            break
+            ;;
+    esac
+}
+
+function screen_xy()
+{
+    tput cup ${2} ${1}
+}
+
+
+###############################################################################
+# Navigation funcitons.
+# These three functions are responsible for slide navigation inside the
+# presentation folder.
+
+function display_slide()
+{
+    clear
+    notes "INFO: Slide number ${page}"
+    source ${presentation_directory}/${slide_list[${page}]}
+    status_bar
+}
+
+function go_back()
+{
+    if [[ ${page} -gt 0 ]]
+    then
+        ((page--))
+    fi
+    display_slide
+}
+
+function go_forward()
+{
+    if [[ ${page} -lt ${slide_last} ]]
+    then
+        ((page++))
+    fi
+    display_slide
+}
+
+function go_to()
+{
+    page=${1}
+    display_slide
+}
+
+
+###############################################################################
+# Main body of the presentation, peforming sanity checks first
+
+# First check if user specified the directory with presentation.
+if [ $# -eq 0 ]
+then
+    echo "$0 error: presentation directory not specified"
+    print_help
+    exit 1
+fi
+
+# Set variables to operate on presentation and notes/debug output.
+presentation_directory=$1
+notes_file=/tmp/presentation-notes
+
+if [ ! -d ${presentatio_directory} ]
+then
+    echo "$0 error: presentation directory does not exist"
+    print_help
+    exit 1
+fi
+
+
+# Check for first file '0' in the presentation directory, required first slide
+# any other subsequent files for slides must have names starting with numbers
+if [ ! -f ${presentation_directory}/0 ]
+then
+    echo "$0 error: first slide not present"
+    echo "Each presentation needs to contain file \"0\""
+    print_help
+    exit 1
+fi
+
+
+# Above concludes the critical checks that can exit the program.
+# Check if author file exists.
+if [ -f ${presentation_directory}/author ]
+then
+    author=$(cat ${presentation_directory}/author)
+    notes "DEBUG: author configured"
+else
+    notes "DEBUG: author file not present"
+fi
+
+
+# Set colouriser to lolcat by default and then verify if it is present.
+# If not then replace it by regular cat.
+# If there is a "nocol" file in the presentation, disable colouriser.
+colouriser=lolcat
+if [ ! $(command -v lolcat) ]
+then
+    colouriser=cat
+    notes "DEBUG: disabled colours due to lack of lolcat"
+fi
+if [ -f ${presentation_directory}/nocol ]
+then
+    colouriser=cat
+    notes "DEBUG: disabled colours, nocol file present in the directory"
+fi
+
+
+# Check the amount of valid slides (file name starting with number) and sort.
+slide_all=$(ls ${presentation_directory}/ | grep -E '^[0-9]' | sort -n)
+# Make it into an array.
+slide_list=( $slide_all )
+# Set total amount of slides.
+slide_total=${#slide_list[@]}
+# Get the last slide number.
+slide_last=$(expr ${slide_total} - 1)
+# Get the last slide file name.
+slide_last_file=${slide_list[${slide_total}]}
+
+
+# Set fonts
+# TODO: add functionality to configure with files in directory
+font_small=small
+font_standard=standard
+font_big=big
+
+
+# Catch ctrl+c to perform clean exit.
+# Commented out due to issue after exiting.
+#trap graceful_exit INT
+
+
+# Set page (currently displayed slide) to 0, make cursor invisible,
+# then display first slide with te go_to function.
+page=0
+tput civis
+go_to 0
+
+
+# Main loop used for keyboard navigation for slides.
+while true
+do
+    read -s -n 1 key
+
+    case "${key}" in
+        '<'|','|'b'|'[') 
+            go_back
+            ;;
+        '>'|'.'|"n"|']') 
+            go_forward
+            ;;
+        [0-9]) 
+            go_to ${key}
+            ;;
+        'r')
+            go_to ${page}
+            ;;
+        'q'|'x'|'e') 
+            graceful_exit
+            ;;
+    esac
+done
+
+# End

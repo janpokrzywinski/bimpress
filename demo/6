@@ -1,0 +1,22 @@
+screen top
+header big centre "screen positions"
+screen top
+text left "screen_top"
+screen half
+text l "screen_half"
+screen down 3
+text l "screen_down 3 #relative move down + number (here after screen_half)"
+screen thirdup
+text left "screen_third_up"
+screen quarterup
+text left "screen_quarter_up"
+screen fifthup
+text left "screen_fifth_up"
+screen thirddown
+text left "screen_third_down"
+screen up 2
+text left "screen_up 2 #relative move up + number (here after screen_third down)"
+screen quarterdown
+text left "screen_quarter_down"
+screen fdown
+text left "screen_fifth_down"

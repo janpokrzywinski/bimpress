@@ -1,0 +1,19 @@
+screen fup
+text left "testing test left"
+text right "testing: one two three"
+screen h
+text centre "hello2"
+screen tdown
+text right "right1"
+text centre "centre"
+text left "left"
+screen fu
+header small right "small right"
+screen down 2
+text fifthright "first"
+screen d 1
+text fifthright "second"
+screen down 1
+text fifthright "third"
+screen fifthup
+header small left "small left"

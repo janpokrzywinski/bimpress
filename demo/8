@@ -1,0 +1,11 @@
+screen half
+text fl "fifth left"
+text fr "fifth right"
+screen down 4
+text ql "quarter left"
+text qr "quarter right"
+screen down 4
+text tl "third left"
+text tr "third right"
+screen down 4
+text centre "centre"

@@ -1,0 +1,15 @@
+screen qup
+text thirdleft first
+echo
+text tleft second
+echo
+text tl third
+echo
+text thirdl longertext
+
+screen h
+text quarterleft ${col_blue}first point
+echo
+text qleft second point
+echo
+text ql ${col_green}third point
